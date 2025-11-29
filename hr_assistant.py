@@ -1,7 +1,6 @@
 import streamlit as st
 import os
 from openai import OpenAI
-import streamlit as st
 
 # HR Knowledge Base
 HR_KNOWLEDGE = """
@@ -33,7 +32,7 @@ def main():
     if not api_key:
         st.error("❌ Add OPENAI_API_KEY in Streamlit Cloud Secrets!")
         st.info("Settings → Secrets → Add `OPENAI_API_KEY`")
-        return
+        st.stop()
     
     client = OpenAI(api_key=api_key)
     
@@ -44,7 +43,7 @@ def main():
     # Sidebar with policies
     with st.sidebar:
         st.markdown("### 📋 HR Policies")
-        st.code(HR_KNOWLEDGE, language="text")
+        st.code(HR_KNOWLEDGE)
     
     # Show chat history
     for message in st.session_state.messages:
@@ -53,12 +52,10 @@ def main():
     
     # Chat input
     if prompt := st.chat_input("Ask about policies, leave, benefits..."):
-        # Add user message
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
         
-        # Generate response
         with st.chat_message("assistant"):
             with st.spinner("Searching HR policies..."):
                 full_prompt = f"""You are an HR Assistant. Answer using ONLY this company policy information:
@@ -69,13 +66,17 @@ Question: {prompt}
 
 Answer concisely and accurately. If not in policies, say "Please contact HR directly.""""
                 
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "user", "content": full_prompt}]
-                )
-                answer = response.choices[0].message.content
-                st.markdown(answer)
-                st.session_state.messages.append({"role": "assistant", "content": answer})
+                try:
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "user", "content": full_prompt}]
+                    )
+                    answer = response.choices[0].message.content
+                    st.markdown(answer)
+                    st.session_state.messages.append({"role": "assistant", "content": answer})
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
+                    st.info("Check OPENAI_API_KEY in Streamlit Secrets")
 
 if __name__ == "__main__":
     main()
