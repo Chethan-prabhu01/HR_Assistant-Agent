@@ -1,13 +1,9 @@
 import streamlit as st
 import os
-from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.messages import HumanMessage, AIMessage
+from openai import OpenAI
+import streamlit as st
 
-load_dotenv()
-
-# HR Knowledge Base (Directly in code - NO external files!)
+# HR Knowledge Base
 HR_KNOWLEDGE = """
 Leave Policy:
 - Annual Leave: 21 days per year, pro-rated for first year
@@ -27,34 +23,28 @@ Work Policy:
 - Overtime: 1.5x rate after 48 hours/week
 """
 
-@st.cache_resource
-def get_llm():
-    return ChatOpenAI(
-        api_key=os.getenv('OPENAI_API_KEY'),
-        model="gpt-4o-mini",
-        temperature=0.1
-    )
-
 def main():
     st.set_page_config(page_title="HR Assistant Agent", layout="wide")
     st.title("🤖 HR Assistant Agent")
-    st.markdown("**AI-powered HR policy assistant for Roomans AI Challenge**")
+    st.markdown("**Roomans AI Challenge - HR Policy Assistant**")
     
-    # Check API key
-    if not os.getenv('OPENAI_API_KEY'):
-        st.error("❌ Add `OPENAI_API_KEY` to `.env` file!")
-        st.code("OPENAI_API_KEY=sk-your-key-here")
+    # OpenAI API Key from Streamlit Secrets
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        st.error("❌ Add OPENAI_API_KEY in Streamlit Cloud Secrets!")
+        st.info("Settings → Secrets → Add `OPENAI_API_KEY`")
         return
     
-    llm = get_llm()
+    client = OpenAI(api_key=api_key)
     
     # Chat history
     if "messages" not in st.session_state:
         st.session_state.messages = []
     
-    # Instructions
-    st.sidebar.markdown("### 📋 HR Policies")
-    st.sidebar.code(HR_KNOWLEDGE, language="text")
+    # Sidebar with policies
+    with st.sidebar:
+        st.markdown("### 📋 HR Policies")
+        st.code(HR_KNOWLEDGE, language="text")
     
     # Show chat history
     for message in st.session_state.messages:
@@ -70,20 +60,22 @@ def main():
         
         # Generate response
         with st.chat_message("assistant"):
-            with st.spinner("Answering..."):
-                full_prompt = f"""
-                You are an HR Assistant. Answer using ONLY this company policy information:
+            with st.spinner("Searching HR policies..."):
+                full_prompt = f"""You are an HR Assistant. Answer using ONLY this company policy information:
+
+{HR_KNOWLEDGE}
+
+Question: {prompt}
+
+Answer concisely and accurately. If not in policies, say "Please contact HR directly.""""
                 
-                {HR_KNOWLEDGE}
-                
-                Question: {prompt}
-                
-                Answer concisely and accurately. If not in policies, say "Please contact HR directly."
-                """
-                
-                response = llm.invoke(full_prompt)
-                st.markdown(response.content)
-                st.session_state.messages.append({"role": "assistant", "content": response.content})
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": full_prompt}]
+                )
+                answer = response.choices[0].message.content
+                st.markdown(answer)
+                st.session_state.messages.append({"role": "assistant", "content": answer})
 
 if __name__ == "__main__":
     main()
