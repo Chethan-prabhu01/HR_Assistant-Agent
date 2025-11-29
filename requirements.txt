@@ -1,3 +1,2 @@
-Edit requirements.txt:
 streamlit
 openai
