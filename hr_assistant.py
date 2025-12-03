@@ -33,17 +33,17 @@ def get_model():
         st.info("Example .env line: GEMINI_API_KEY=your-gemini-key-here")
         st.stop()
 
-    # Configure Gemini client and return a GenerativeModel
-    client = genai.Client(api_key=api_key)
-    model = client.models.get("gemini-1.5-flash")
-    return client, model
+    # Configure Gemini client and create a GenerativeModel
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    return model
 
 def main():
     st.set_page_config(page_title="HR Assistant Agent", layout="wide")
     st.title("🤖 HR Assistant Agent")
     st.markdown("**Roomans AI Challenge - HR Policy Assistant (Gemini-powered)**")
 
-    client, _ = get_model()
+    model = get_model()
 
     # Initialize chat history
     if "messages" not in st.session_state:
@@ -78,10 +78,7 @@ Question: {prompt}
 Answer concisely and accurately. If the answer is not in the policies, say "Please contact HR directly."
 """
                 try:
-                    response = client.models.generate_content(
-                        model="gemini-1.5-flash",
-                        contents=full_prompt,
-                    )
+                    response = model.generate_content(full_prompt)
                     answer = response.text
                 except Exception as e:
                     answer = f"⚠️ Error: {e}"
