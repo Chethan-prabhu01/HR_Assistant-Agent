@@ -1,6 +1,10 @@
 import streamlit as st
 import os
-from openai import OpenAI
+from dotenv import load_dotenv
+from google import genai
+
+# Load environment variables from .env when running locally
+load_dotenv()
 
 # HR Knowledge Base (hardcoded)
 HR_KNOWLEDGE = """
@@ -22,40 +26,44 @@ Work Policy:
 - Overtime: 1.5x rate after 48 hours/week
 """
 
+def get_client():
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        st.error("❌ GEMINI_API_KEY not found. Add it to your .env file or Streamlit secrets.")
+        st.info("Example .env line: GEMINI_API_KEY=your-gemini-key-here")
+        st.stop()
+    client = genai.Client(api_key=api_key)
+    return client
+
 def main():
     st.set_page_config(page_title="HR Assistant Agent", layout="wide")
     st.title("🤖 HR Assistant Agent")
-    st.markdown("**Roomans AI Challenge - HR Policy Assistant**")
+    st.markdown("**Roomans AI Challenge - HR Policy Assistant (Gemini-powered)**")
 
-    # Get OpenAI API key from environment variable
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        st.error("❌ Add your OPENAI_API_KEY as a Streamlit secret or environment variable!")
-        st.info("Go to Settings > Secrets in Streamlit Cloud or set environment variable locally.")
-        st.stop()
+    client = get_client()
 
-    client = OpenAI(api_key=api_key)
-
-    # Initialize chat messages state
+    # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Show HR policies in sidebar
+    # Sidebar with HR policies
     with st.sidebar:
         st.markdown("### 📋 HR Policies")
         st.code(HR_KNOWLEDGE, language="text")
 
-    # Display previous messages
+    # Show previous messages
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # User input
+    # Chat input
     if prompt := st.chat_input("Ask about policies, leave, benefits..."):
+        # Add and show user message
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
+        # Generate assistant response
         with st.chat_message("assistant"):
             with st.spinner("Searching HR policies..."):
                 full_prompt = f"""You are an HR Assistant. Use ONLY the following company HR policy information to answer the question.
@@ -67,11 +75,11 @@ Question: {prompt}
 Answer concisely and accurately. If the answer is not in the policies, say "Please contact HR directly."
 """
                 try:
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[{"role": "user", "content": full_prompt}]
+                    response = client.models.generate_content(
+                        model="gemini-1.5-flash",
+                        contents=full_prompt,
                     )
-                    answer = response.choices[0].message.content
+                    answer = response.text
                 except Exception as e:
                     answer = f"⚠️ Error: {e}"
 
