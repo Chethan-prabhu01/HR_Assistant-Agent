@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 from dotenv import load_dotenv
-from google import genai
+import google.genai as genai
 
 # Load environment variables from .env when running locally
 load_dotenv()
@@ -32,17 +32,18 @@ def get_model():
         st.error("❌ GEMINI_API_KEY not found. Add it to your .env file or Streamlit secrets.")
         st.info("Example .env line: GEMINI_API_KEY=your-gemini-key-here")
         st.stop()
-    # Configure global client and return a GenerativeModel
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    return model
+
+    # Configure Gemini client and return a GenerativeModel
+    client = genai.Client(api_key=api_key)
+    model = client.models.get("gemini-1.5-flash")
+    return client, model
 
 def main():
     st.set_page_config(page_title="HR Assistant Agent", layout="wide")
     st.title("🤖 HR Assistant Agent")
     st.markdown("**Roomans AI Challenge - HR Policy Assistant (Gemini-powered)**")
 
-    model = get_model()
+    client, _ = get_model()
 
     # Initialize chat history
     if "messages" not in st.session_state:
@@ -77,7 +78,10 @@ Question: {prompt}
 Answer concisely and accurately. If the answer is not in the policies, say "Please contact HR directly."
 """
                 try:
-                    response = model.generate_content(full_prompt)
+                    response = client.models.generate_content(
+                        model="gemini-1.5-flash",
+                        contents=full_prompt,
+                    )
                     answer = response.text
                 except Exception as e:
                     answer = f"⚠️ Error: {e}"
