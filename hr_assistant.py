@@ -21,29 +21,27 @@ Benefits:
 - Bonus: Performance based, up to 2 months salary
 
 Work Policy:
-- Work hours: 9 AM - 6 PM, Monday-Friday
+- Work hours: 9 AM - 6 PM, Monday–Friday
 - Remote work: 2 days per week approved
 - Overtime: 1.5x rate after 48 hours/week
 """
 
-def get_model():
+def get_client():
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        st.error("❌ GEMINI_API_KEY not found. Add it to your .env file or Streamlit secrets.")
-        st.info("Example .env line: GEMINI_API_KEY=your-gemini-key-here")
+        st.error("❌ GEMINI_API_KEY not found. Add it to your .env file (local) or Streamlit secrets (cloud).")
+        st.info("Example .env line: GEMINI_API_KEY=your-gemini-api-key-here")
         st.stop()
-
-    # Configure Gemini client and create a GenerativeModel
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    return model
+    # Create Gemini client with API key
+    client = genai.Client(api_key=api_key)
+    return client
 
 def main():
     st.set_page_config(page_title="HR Assistant Agent", layout="wide")
     st.title("🤖 HR Assistant Agent")
     st.markdown("**Roomans AI Challenge - HR Policy Assistant (Gemini-powered)**")
 
-    model = get_model()
+    client = get_client()
 
     # Initialize chat history
     if "messages" not in st.session_state:
@@ -78,7 +76,10 @@ Question: {prompt}
 Answer concisely and accurately. If the answer is not in the policies, say "Please contact HR directly."
 """
                 try:
-                    response = model.generate_content(full_prompt)
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=full_prompt,
+                    )
                     answer = response.text
                 except Exception as e:
                     answer = f"⚠️ Error: {e}"
