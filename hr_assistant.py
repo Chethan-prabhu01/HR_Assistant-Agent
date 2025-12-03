@@ -26,21 +26,23 @@ Work Policy:
 - Overtime: 1.5x rate after 48 hours/week
 """
 
-def get_client():
+def get_model():
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         st.error("❌ GEMINI_API_KEY not found. Add it to your .env file or Streamlit secrets.")
         st.info("Example .env line: GEMINI_API_KEY=your-gemini-key-here")
         st.stop()
-    client = genai.Client(api_key=api_key)
-    return client
+    # Configure global client and return a GenerativeModel
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    return model
 
 def main():
     st.set_page_config(page_title="HR Assistant Agent", layout="wide")
     st.title("🤖 HR Assistant Agent")
     st.markdown("**Roomans AI Challenge - HR Policy Assistant (Gemini-powered)**")
 
-    client = get_client()
+    model = get_model()
 
     # Initialize chat history
     if "messages" not in st.session_state:
@@ -75,10 +77,7 @@ Question: {prompt}
 Answer concisely and accurately. If the answer is not in the policies, say "Please contact HR directly."
 """
                 try:
-                    response = client.models.generate_content(
-                        model="gemini-1.5-flash-001",
-                        contents=full_prompt,
-                    )
+                    response = model.generate_content(full_prompt)
                     answer = response.text
                 except Exception as e:
                     answer = f"⚠️ Error: {e}"
